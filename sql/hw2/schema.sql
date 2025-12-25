@@ -3,6 +3,12 @@ CREATE TABLE faculties (
     name VARCHAR(100) NOT NULL
 );
 
+CREATE TABLE student_groups (
+    id SERIAL PRIMARY KEY,
+    group_name VARCHAR(50) NOT NULL,
+    faculty_id INT REFERENCES faculties(id)
+);
+
 CREATE TABLE students (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -10,11 +16,7 @@ CREATE TABLE students (
     birth_date DATE,
     group_id INT REFERENCES student_groups(id)
 );
-CREATE TABLE student_groups (
-    id SERIAL PRIMARY KEY,
-    group_name VARCHAR(50) NOT NULL,
-    faculty_id INT REFERENCES faculties(id)
-);
+
 
 CREATE TABLE schedule (
     id SERIAL PRIMARY KEY,
@@ -22,3 +24,4 @@ CREATE TABLE schedule (
     time_slot VARCHAR(50), 
     group_id INT REFERENCES student_groups(id)
 );
+
