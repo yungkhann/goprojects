@@ -1,35 +1,37 @@
 package database
+
 import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "strconv"
-    "github.com/jackc/pgx/v5"
-    "github.com/jackc/pgx/v5/pgxpool"
-    "github.com/labstack/echo/v4"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v4"
 )
 
 type Student struct{
-    FullName string
-    Gender string
-    BirthDate string
-    GroupID int
-    GroupName string
+    FullName  string `json:"full_name"`
+    Gender    string `json:"gender"`
+    BirthDate string `json:"birth_date"`
+    GroupID   int    `json:"group_id"`
+    GroupName string `json:"group_name"`
 }
 
 type Group struct{
-    ID int
-    GroupName string
-    FacultyID int
+    ID        int    `json:"id"`
+    GroupName string `json:"group_name"`
+    FacultyID int    `json:"faculty_id"`
 }
 type Schedule struct{
-    ID int
-    SubjectName string
-    TimeSlot string
-    GroupID int
-    GroupName string
+    ID          int    `json:"id"`
+    SubjectName string `json:"subject_name"`
+    TimeSlot    string `json:"time_slot"`
+    GroupID     int    `json:"group_id"`
+    GroupName   string `json:"group_name"`
 }
 
 var pool *pgxpool.Pool
@@ -96,36 +98,6 @@ func getStudentById(pool *pgxpool.Pool, id int) (*Student, error) {
 }
 
 
-func GetGroupHandler(c echo.Context) error{
-    idStr := c.Param("groupId")
-    id, err := strconv.Atoi(idStr)
-    if err != nil {
-        return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
-    }
-
-    group, err := getGroupById(pool, id)
-    if err != nil {
-        if err == pgx.ErrNoRows {
-            return c.JSON(http.StatusNotFound, map[string]string{"error": "Group not found"})
-        }
-        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Database error"})
-    }
-    return c.JSON(http.StatusOK, group)
-}
-
-func getGroupById(pool *pgxpool.Pool, id int) (*Group, error) {
-    group := &Group{}
-
-    query := `SELECT id, group_name, faculty_id FROM student_groups WHERE id = $1`
-    row := pool.QueryRow(context.Background(), query, id)
-
-    err := row.Scan(&group.ID, &group.GroupName, &group.FacultyID)
-    if err != nil {
-        return nil, err
-    }
-
-    return group, nil
-}
 
 
 
