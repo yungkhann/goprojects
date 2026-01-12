@@ -34,6 +34,14 @@ type Schedule struct{
     GroupName   string `json:"group_name"`
 }
 
+type Attendance struct{
+    ID          int    `json:"id"`
+    SubjectID   int    `json:"subject_id"`
+    VisitDay    string `json:"visit_day"`
+    Visited     bool   `json:"visited"`
+    StudentId   int    `json:"student_id"`
+}
+
 var pool *pgxpool.Pool
 
 func InitDB() *pgxpool.Pool {
@@ -175,3 +183,154 @@ func getScheduleByGroupId(pool *pgxpool.Pool, groupId int) ([]Schedule, error) {
 
     return schedules, nil
 }
+
+func PostAttendanceHandler(c echo.Context) error{
+    var attendance Attendance
+    if err := c.Bind(&attendance); err!=nil{
+        return c.JSON(http.StatusNotFound, map[string]string{"error": "Attendace not found"})
+    }
+    
+    if !(attendance.StudentId > 0) || !(attendance.SubjectID > 0) || (attendance.VisitDay == "") {
+                return c.JSON(http.StatusBadRequest, map[string]string{"error": "Bad request"})
+
+    }
+
+    createdAttendance, err := createAttendance(pool, &attendance)
+     if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Database error"})
+    }
+
+    return c.JSON(http.StatusCreated, createdAttendance)
+
+}
+
+
+func createAttendance(pool *pgxpool.Pool, attendance *Attendance) (*Attendance, error) {
+    query := `
+        INSERT INTO attendance (subject_id, visit_day, visited, student_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+    `
+    
+    err := pool.QueryRow(
+        context.Background(),
+        query,
+        attendance.SubjectID,
+        attendance.VisitDay,
+        attendance.Visited,
+        attendance.StudentId,
+    ).Scan(&attendance.ID)
+    
+    if err != nil {
+        return nil, err
+    }
+
+    return attendance, nil
+}
+
+
+
+// func getStudentById(pool *pgxpool.Pool, id int) (*Student, error) {
+//     student := &Student{}
+
+//     query := `
+//         SELECT s.full_name, s.gender, s.birth_date::text, s.group_id, sg.group_name 
+//         FROM students s
+//         LEFT JOIN student_groups sg ON s.group_id = sg.id
+//         WHERE s.id = $1
+//     `
+//     row := pool.QueryRow(context.Background(), query, id)
+
+//     err := row.Scan(&student.FullName, &student.Gender, &student.BirthDate, &student.GroupID, &student.GroupName)
+//     if err != nil {
+//         return nil, err
+//     }
+
+//     return student, nil
+// }
+
+
+func GetAttendanceByStudentIdHandler(c echo.Context) error {
+    studentId, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid student ID"})
+    }
+
+    attendances, err := getAttendanceByStudentId(pool, studentId)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Database error"})
+    }
+
+    return c.JSON(http.StatusOK, attendances)
+}
+
+func getAttendanceByStudentId(pool *pgxpool.Pool, id int) ([]Attendance, error) {
+    query := `
+        SELECT a.id, a.subject_id, a.visit_day, a.visited, a.student_id
+        FROM attendance a
+        WHERE a.student_id = $1
+        ORDER BY a.visit_day DESC
+        LIMIT 5
+    `
+    
+    rows, err := pool.Query(context.Background(), query, id)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var attendances []Attendance
+    for rows.Next() {
+        var attendance Attendance
+        err := rows.Scan(&attendance.ID, &attendance.SubjectID, &attendance.VisitDay, &attendance.Visited, &attendance.StudentId)
+        if err != nil {
+            return nil, err
+        }
+        attendances = append(attendances, attendance)
+    }
+
+    return attendances, nil
+}
+
+func GetAttendanceBySubjectIdHandler(c echo.Context) error {
+    subjectId, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid subject ID"})
+    }
+
+    attendances, err := getAttendanceBySubjectId(pool, subjectId)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Database error"})
+    }
+
+    return c.JSON(http.StatusOK, attendances)
+}
+
+func getAttendanceBySubjectId(pool *pgxpool.Pool, id int) ([]Attendance, error) {
+    query := `
+        SELECT a.id, a.subject_id, a.visit_day, a.visited, a.student_id
+        FROM attendance a
+        WHERE a.subject_id = $1
+        ORDER BY a.visit_day DESC
+        LIMIT 5
+    `
+
+    rows, err := pool.Query(context.Background(), query, id)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var attendances []Attendance
+    for rows.Next() {
+        var attendance Attendance
+        err := rows.Scan(&attendance.ID, &attendance.SubjectID, &attendance.VisitDay, &attendance.Visited, &attendance.StudentId)
+        if err != nil {
+            return nil, err
+        }
+        attendances = append(attendances, attendance)
+    }
+
+    return attendances, nil
+}
+
